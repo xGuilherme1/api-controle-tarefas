@@ -1,7 +1,8 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using ApiServico.Models.Dtos;
 using ApiServico.Models;
+using ApiServico.DataContexts;
+using Microsoft.EntityFrameworkCore;
 
 namespace ApiServico.Controllers
 {
@@ -9,26 +10,30 @@ namespace ApiServico.Controllers
     [ApiController]
     public class ChamadoController : ControllerBase
     {
-        private static List<Chamado> _listaChamados = new List<Chamado>
-        {
-            new () { 
-                Id = 1, Titulo = "Erro na tela de Acesso", Descricao = "O usuário não conseguiu logar." },
-            new () { 
-                Id = 2, Titulo = "Sistema com lentidão", Descricao = "Demora no carregamento de telas." }
-        };
+        private readonly AppDbContext _context;
 
-        private static int _proximoId = 3;
-
-        [HttpGet("Mostrar")]
-        public IActionResult BuscarTodos()
+        public ChamadoController(AppDbContext context)
         {
-            return Ok(_listaChamados);
+            _context = context;
         }
 
-        [HttpGet("{id}/Buscar")]
-        public IActionResult BuscarPorId(int id)
+        [HttpGet]
+        public async Task<IActionResult> BuscarTodos()
         {
-            var chamado = _listaChamados.FirstOrDefault(x => x.Id == id);
+            var chamados = await _context.Chamados.ToListAsync();
+
+            if (chamados == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(chamados);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> BuscarPorId(int id)
+        {
+            var chamado = await _context.Chamados.SingleOrDefaultAsync(x => x.Id == id);
 
             if (chamado == null)
             {
@@ -38,38 +43,40 @@ namespace ApiServico.Controllers
             return Ok(chamado);
         }
 
-        [HttpPost("Criar")]
-        public IActionResult Criar([FromBody] ChamadoDto novoChamado)
+        [HttpPost]
+        public async Task<IActionResult> Criar([FromBody] ChamadoDto novoChamado)
         {
             var chamado = new Chamado() { Titulo = novoChamado.Titulo, Descricao = novoChamado.Descricao };
-            chamado.Id = _proximoId++;
-            chamado.Status = "Aberto";
 
-            _listaChamados.Add(chamado);
+            await _context.Chamados.AddAsync(chamado);
+            await _context.SaveChangesAsync();
 
-            return Created("", novoChamado);
+            return Created("", chamado);
         }
 
-        [HttpPut("{id}/Alterar")]
-        public IActionResult Atualizar(int id, [FromBody] ChamadoDto novoChamado)
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Atualizar(int id, [FromBody] ChamadoDto atualizacaoChamado)
         {
-            var chamado = _listaChamados.FirstOrDefault(item => item.Id == id);
+            var chamado = await _context.Chamados.SingleOrDefaultAsync(x => x.Id == id);
 
             if (chamado == null)
             {
                 return NotFound();
             }
 
-            chamado.Titulo = novoChamado.Titulo;
-            chamado.Descricao = novoChamado.Descricao;
+            chamado.Titulo = atualizacaoChamado.Titulo;
+            chamado.Descricao = atualizacaoChamado.Descricao;
+
+            _context.Chamados.Update(chamado);
+            await _context.SaveChangesAsync();
 
             return Ok(chamado);
         }
 
-        [HttpPost("{id}/finalizar)")]
-        public IActionResult FinalizarChamado(int id) 
+        [HttpPost("{id}/Finalizar")]
+        public async Task<IActionResult> FinalizarChamado(int id)
         {
-            var chamado = _listaChamados.FirstOrDefault(item => item.Id == id);
+            var chamado = await _context.Chamados.SingleOrDefaultAsync(x => x.Id == id);
 
             if (chamado == null)
             {
@@ -79,20 +86,23 @@ namespace ApiServico.Controllers
             chamado.Status = "Fechado";
             chamado.DataFechamento = DateTime.Now;
 
+            await _context.SaveChangesAsync();
+
             return Ok(chamado);
         }
 
-        [HttpDelete("{id}/Deletar")]
-        public IActionResult Remover(int id) 
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Remover(int id) 
         {
-            var chamado = _listaChamados.FirstOrDefault(x => x.Id == id);
+            var chamado = await _context.Chamados.SingleOrDefaultAsync(x => x.Id == id);
 
             if (chamado == null)
             {
                 return NotFound();
             }
 
-            _listaChamados.Remove(chamado);
+            _context.Chamados.Remove(chamado);
+            await _context.SaveChangesAsync();
 
             return NoContent();
         }
