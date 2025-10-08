@@ -1,5 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
-
+using System.Text.Json.Serialization;
 
 namespace ApiServico.Models
 {
@@ -23,5 +23,11 @@ namespace ApiServico.Models
 
         [Column("situacao_cha")]
         public string Status { get; set; } = "Aberto";
+
+        public virtual Prioridade? Prioridade { get; set; }
+
+        [Column("id_pri_fk")]
+        public int PrioridadeId { get; set; }
+
     }
 }

@@ -18,14 +18,24 @@ namespace ApiServico.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> BuscarTodos()
+        public async Task<IActionResult> BuscarTodos(
+                [FromQuery] string? search,
+                [FromQuery] string? situacao
+            )
         {
-            var chamados = await _context.Chamados.ToListAsync();
+            var query = _context.Chamados.AsQueryable();
 
-            if (chamados == null)
+            if(search is not null)
             {
-                return NotFound();
+                query = query.Where(x => x.Titulo.Contains(search));
             }
+
+            if(situacao is not null)
+            {
+                query = query.Where(x => x.Status.Contains(situacao));
+            }
+
+            var chamados = await query.Include(p => p.Prioridade).ToListAsync();
 
             return Ok(chamados);
         }
@@ -46,7 +56,18 @@ namespace ApiServico.Controllers
         [HttpPost]
         public async Task<IActionResult> Criar([FromBody] ChamadoDto novoChamado)
         {
-            var chamado = new Chamado() { Titulo = novoChamado.Titulo, Descricao = novoChamado.Descricao };
+            var prioridade = await _context.Prioridades.FirstOrDefaultAsync(x => x.Id == novoChamado.PrioridadeId);
+
+            if (prioridade is null)
+            {
+                return NotFound("Prioridade informada não encontrada");
+            }
+
+            var chamado = new Chamado() { 
+                Titulo = novoChamado.Titulo, 
+                Descricao = novoChamado.Descricao,
+                PrioridadeId = novoChamado.PrioridadeId
+            };
 
             await _context.Chamados.AddAsync(chamado);
             await _context.SaveChangesAsync();

@@ -10,5 +10,7 @@ namespace ApiServico.DataContexts
         }
 
         public DbSet<Chamado> Chamados { get; set; }
+
+        public DbSet<Prioridade> Prioridades { get; set; }
     }
 }
